@@ -1,0 +1,27 @@
+<svg viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer ring -->
+  <circle cx="42" cy="42" r="36" stroke="#4ccf9c" stroke-width="2.5"/>
+  <!-- Inner hub -->
+  <circle cx="42" cy="42" r="11" stroke="#4ccf9c" stroke-width="2"/>
+  <!-- Gold center -->
+  <circle cx="42" cy="42" r="7" fill="#C8892A"/>
+  <circle cx="42" cy="42" r="2.5" fill="#4ccf9c"/>
+  <!-- Main spokes -->
+  <line x1="42" y1="6" x2="42" y2="30" stroke="#4ccf9c" stroke-width="2"/>
+  <circle cx="42" cy="5" r="3.5" fill="#4ccf9c"/>
+  <line x1="42" y1="54" x2="42" y2="78" stroke="#4ccf9c" stroke-width="2"/>
+  <circle cx="42" cy="79" r="3.5" fill="#4ccf9c"/>
+  <line x1="6" y1="42" x2="30" y2="42" stroke="#4ccf9c" stroke-width="2"/>
+  <circle cx="5" cy="42" r="3.5" fill="#4ccf9c"/>
+  <line x1="54" y1="42" x2="78" y2="42" stroke="#4ccf9c" stroke-width="2"/>
+  <circle cx="79" cy="42" r="3.5" fill="#4ccf9c"/>
+  <!-- Diagonal spokes -->
+  <line x1="16.6" y1="16.6" x2="31.2" y2="31.2" stroke="#4ccf9c" stroke-width="1.5"/>
+  <circle cx="15" cy="15" r="2.5" fill="#4ccf9c"/>
+  <line x1="52.8" y1="52.8" x2="67.4" y2="67.4" stroke="#4ccf9c" stroke-width="1.5"/>
+  <circle cx="69" cy="69" r="2.5" fill="#4ccf9c"/>
+  <line x1="67.4" y1="16.6" x2="52.8" y2="31.2" stroke="#4ccf9c" stroke-width="1.5"/>
+  <circle cx="69" cy="15" r="2.5" fill="#4ccf9c"/>
+  <line x1="31.2" y1="52.8" x2="16.6" y2="67.4" stroke="#4ccf9c" stroke-width="1.5"/>
+  <circle cx="15" cy="69" r="2.5" fill="#4ccf9c"/>
+</svg>

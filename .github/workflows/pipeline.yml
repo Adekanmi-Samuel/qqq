@@ -1,0 +1,276 @@
+name: SchoolHub CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "22"
+  FRONTEND_URL: https://schoolpilot-work.vercel.app
+  BACKEND_URL: https://schoolpilot-work-api.vercel.app
+
+jobs:
+  # ============================================================
+  # STAGE 1: QUALITY GATE
+  # Builds and typechecks both apps. Nothing deploys if this fails.
+  # ============================================================
+  quality:
+    name: Code quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # ── BACKEND ────────────────────────────────────────────
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+          JWT_SECRET: ci-placeholder-secret-at-least-32-chars-long
+          FRONTEND_URL: ${{ env.FRONTEND_URL }}
+
+      - name: Backend typecheck
+        run: npx tsc --noEmit
+        working-directory: backend
+
+      - name: Backend build
+        run: npm run build
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+          JWT_SECRET: ci-placeholder-secret-at-least-32-chars-long
+          FRONTEND_URL: ${{ env.FRONTEND_URL }}
+
+      # ── FRONTEND ───────────────────────────────────────────
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Frontend production build
+        run: npm run build
+        working-directory: frontend
+        env:
+          # Same origin proxy. Do not point at the raw backend in production builds.
+          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_SITE_URL: ${{ env.FRONTEND_URL }}
+          BACKEND_ORIGIN: ${{ env.BACKEND_URL }}
+          # Omit Supabase public vars in the quality build on purpose.
+          # Vercel redacts sensitive env on pull, and invalid placeholders
+          # used to crash prerender. Cookie auth does not need Supabase.
+
+      - name: Upload backend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/dist
+          retention-days: 1
+
+  # ============================================================
+  # STAGE 2: PREVIEW DEPLOY (pull requests)
+  # Vercel preview URL only. Never touches production aliases.
+  # ============================================================
+  deploy-preview:
+    name: Deploy preview
+    needs: quality
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: preview
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      # Remote build on Vercel so sensitive env vars stay server side.
+      # Local vercel pull redacts them and would bake placeholders into NEXT_PUBLIC_*.
+      - name: Deploy frontend preview
+        id: frontend_preview
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --token "$VERCEL_TOKEN")
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Frontend preview: $DEPLOY_URL"
+
+      - name: Deploy backend preview
+        id: backend_preview
+        working-directory: backend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --token "$VERCEL_TOKEN")
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Backend preview: $DEPLOY_URL"
+
+      - name: Summary
+        run: |
+          echo "Preview frontend: ${{ steps.frontend_preview.outputs.url }}"
+          echo "Preview backend: ${{ steps.backend_preview.outputs.url }}"
+          echo "Production is untouched until this PR merges to main."
+
+  # ============================================================
+  # STAGE 3: PRODUCTION DEPLOY (main only)
+  # Deploys backend first, then frontend. Health checks both.
+  # ============================================================
+  deploy-production:
+    name: Deploy production
+    needs: quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://schoolpilot-work.vercel.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      # Remote build on Vercel with real production env. Local prebuilt is unsafe
+      # because vercel pull redacts sensitive values (DATABASE_URL, Supabase, SMTP).
+      - name: Deploy backend to production
+        id: backend_deploy
+        working-directory: backend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --prod --token "$VERCEL_TOKEN")
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Backend production deploy: $DEPLOY_URL"
+
+      - name: Point API alias at backend production deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          BACKEND_URL: ${{ env.BACKEND_URL }}
+          DEPLOY_URL: ${{ steps.backend_deploy.outputs.url }}
+        run: |
+          HOST="${DEPLOY_URL#https://}"
+          if [ "$HOST" != "${BACKEND_URL#https://}" ]; then
+            vercel alias set "$DEPLOY_URL" "${BACKEND_URL#https://}" --token "$VERCEL_TOKEN"
+          else
+            echo "Backend already aliased to $BACKEND_URL"
+          fi
+
+      - name: Deploy frontend to production
+        id: frontend_deploy
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --prod --token "$VERCEL_TOKEN")
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Frontend production deploy: $DEPLOY_URL"
+
+      - name: Point site alias at frontend production deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          FRONTEND_URL: ${{ env.FRONTEND_URL }}
+          DEPLOY_URL: ${{ steps.frontend_deploy.outputs.url }}
+        run: |
+          HOST="${DEPLOY_URL#https://}"
+          if [ "$HOST" != "${FRONTEND_URL#https://}" ]; then
+            vercel alias set "$DEPLOY_URL" "${FRONTEND_URL#https://}" --token "$VERCEL_TOKEN"
+          else
+            echo "Frontend already aliased to $FRONTEND_URL"
+          fi
+
+      # ============================================================
+      # POST DEPLOY HEALTH CHECK
+      # If production is down, this job fails and the deploy is
+      # visible as broken. You can re-run from the last green commit.
+      # ============================================================
+      - name: Health check production
+        env:
+          FRONTEND_URL: ${{ env.FRONTEND_URL }}
+          BACKEND_URL: ${{ env.BACKEND_URL }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for production to settle..."
+          sleep 20
+
+          check() {
+            local name="$1"
+            local url="$2"
+            local expect="${3:-200}"
+            local code
+            code=$(curl -sS -o /tmp/health-body -w "%{http_code}" --max-time 30 "$url" || echo "000")
+            echo "$name -> HTTP $code ($url)"
+            cat /tmp/health-body; echo
+            if [ "$code" != "$expect" ]; then
+              echo "::error::$name failed with HTTP $code"
+              exit 1
+            fi
+          }
+
+          check "Backend direct health" "$BACKEND_URL/api/health"
+          check "Frontend home" "$FRONTEND_URL/"
+          check "Frontend login" "$FRONTEND_URL/login/"
+          check "Frontend proxy health" "$FRONTEND_URL/api/health"
+
+          # Proxy must return JSON auth errors for unauthenticated /api/auth/me
+          BODY=$(curl -sS --max-time 30 "$FRONTEND_URL/api/auth/me" || true)
+          echo "Proxy /api/auth/me body: $BODY"
+          echo "$BODY" | grep -q '"success"' || {
+            echo "::error::Proxy auth response missing JSON success envelope"
+            exit 1
+          }
+
+          echo "All production health checks passed."
+
+      - name: Production summary
+        run: |
+          echo "Production live"
+          echo "  Site:  ${{ env.FRONTEND_URL }}"
+          echo "  API:   ${{ env.BACKEND_URL }}"
+          echo "  Commit:${{ github.sha }}"

@@ -1,0 +1,1061 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas = ["public", "auth"]
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  PRINCIPAL
+  TEACHER
+  BURSAR
+  PARENT
+  STUDENT
+  @@schema("public")
+}
+
+enum SchoolType {
+  NURSERY
+  PRIMARY
+  SECONDARY
+  COMBINED
+  @@schema("public")
+}
+
+enum OwnershipType {
+  PRIVATE
+  GOVERNMENT
+  @@schema("public")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+  SICK
+  @@schema("public")
+}
+
+enum NoticeTarget {
+  ALL
+  CLASS
+  ARM
+  @@schema("public")
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+  @@schema("public")
+}
+
+enum SchoolStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  @@schema("public")
+}
+
+model School {
+  id                 String        @id @default(uuid())
+  name               String
+  slug               String        @unique
+  cacNumber          String?
+  schoolType         SchoolType
+  ownershipType      OwnershipType
+  state              String
+  lga                String
+  address            String
+  email              String
+  phone              String
+  logoUrl            String?
+  motto              String?
+  website            String?
+  currency           String        @default("NGN")
+  planType           String        @default("FREE")
+  subscriptionPlanId String?
+  verified           Boolean       @default(false)
+  verifiedAt         DateTime?
+  status             SchoolStatus  @default(PENDING_VERIFICATION)
+  activatedAt        DateTime?
+  suspendedAt        DateTime?
+  suspensionReason   String?
+  createdAt          DateTime      @default(now())
+
+  users               User[]
+  students            Student[]
+  classes             Class[]
+  notices             Notice[]
+  invites             SchoolInvite[]
+  onboarding          OnboardingProgress?
+  academicCalendars   AcademicCalendar[]
+  subjectTeachers     SubjectTeacher[]
+  timetableSlots      TimetableSlot[]
+  exams               Exam[]
+  feeRecords          FeeRecord[]
+  salaryRecords       SalaryRecord[]
+  schemesOfWork       SchemeOfWork[]
+  cbtSubjects         CBTSubject[]         @relation("CBTSubjectSchool")
+  cbtTopics           CBTTopic[]           @relation("CBTTopicSchool")
+  cbtQuestions        CBTQuestion[]        @relation("CBTQuestionSchool")
+  cbtAttempts         CBTAttempt[]         @relation("CBTAttemptSchool")
+  cbtSessions         CBTSession[]         @relation("CBTSessionSchool")
+  teacherTimesheets   TeacherTimesheet[]
+  emailConfig         SchoolEmailConfig?
+  emailTemplates      EmailTemplate[]
+  emailLogs           EmailLog[]
+  complianceReports   ComplianceReport[]
+  subscriptionPlan    SubscriptionPlan?    @relation(fields: [subscriptionPlanId], references: [id])
+  platformConfig      PlatformConfig?      @relation(fields: [platformConfigId], references: [id])
+  paymentTransactions PaymentTransaction[]
+  platformConfigId    String?
+  payments            Payment[]
+  reviews            SchoolReview[]
+
+  @@map("schools")
+  @@schema("public")
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  @@schema("public")
+}
+
+model SchoolReview {
+  id             String       @id @default(uuid())
+  schoolId       String
+  userId         String
+  rating         Int
+  quote          String
+  authorName     String
+  authorRole     String
+  schoolName     String
+  state          String
+  status         ReviewStatus @default(PENDING)
+  moderatedBy    String?
+  moderatedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, userId])
+  @@index([status, createdAt])
+  @@map("school_reviews")
+  @@schema("public")
+}
+
+model User {
+  id                    String   @id @default(uuid())
+  schoolId              String?
+  studentId             String?  @unique
+  fullName              String
+  email                 String   @unique
+  passwordHash          String
+  role                  Role
+  active                Boolean  @default(true)
+  passwordResetRequired Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  school                     School?             @relation(fields: [schoolId], references: [id])
+  student                    Student?            @relation("StudentUser", fields: [studentId], references: [id])
+  classArms                  ClassArm[]          @relation("ClassTeacher")
+  attendance                 AttendanceRecord[]
+  parentStudents             ParentStudentLink[] @relation("ParentUser")
+  subjectTeachers            SubjectTeacher[]
+  timetableSlots             TimetableSlot[]
+  salaryStaff                SalaryRecord[]      @relation("SalaryStaff")
+  salaryRecordedBy           SalaryRecord[]      @relation("SalaryRecordedBy")
+  feeRecordedBy              FeeRecord[]         @relation("FeeRecordedBy")
+  teacherTimesheets          TeacherTimesheet[]  @relation("TeacherTimesheets")
+  approvedTimesheets         TeacherTimesheet[]  @relation("ApprovedTimesheets")
+  generatedComplianceReports ComplianceReport[]
+  refreshTokens              RefreshToken[]
+  reviews                    SchoolReview[]
+
+  @@index([schoolId])
+  @@map("users")
+  @@schema("public")
+}
+
+model Student {
+  id              String    @id @default(uuid())
+  schoolId        String
+  admissionNumber String
+  fullName        String
+  dob             DateTime?
+  gender          String?
+  classId         String?
+  armId           String?
+  parentName      String?
+  parentPhone     String?
+  parentEmail     String?
+  passportUrl     String?
+  house           String?
+  bloodGroup      String?
+  allergies       String?
+  medicalNotes    String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  previousSchool  String?
+  stateOfOrigin   String?
+  nationality     String?
+  notes           String?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  school       School              @relation(fields: [schoolId], references: [id])
+  class        Class?              @relation(fields: [classId], references: [id])
+  arm          ClassArm?          @relation(fields: [armId], references: [id])
+  attendance   AttendanceRecord[]
+  user         User?               @relation("StudentUser")
+  parentLinks  ParentStudentLink[] @relation("ParentStudent")
+  examAttempts ExamAttempt[]
+  feeRecords   FeeRecord[]         @relation("FeeStudent")
+  payments     Payment[]
+  cbtAttempts  CBTAttempt[]        @relation("CBTAttemptStudent")
+  cbtSessions  CBTSession[]        @relation("CBTSessionStudent")
+
+  @@index([schoolId])
+  @@index([admissionNumber])
+  @@map("students")
+  @@schema("public")
+}
+
+model ParentStudentLink {
+  id        String   @id @default(uuid())
+  parentId  String
+  studentId String
+  createdAt DateTime @default(now())
+
+  parent  User    @relation("ParentUser", fields: [parentId], references: [id])
+  student Student @relation("ParentStudent", fields: [studentId], references: [id])
+
+  @@unique([parentId, studentId])
+  @@map("parent_student_links")
+  @@schema("public")
+}
+
+model Class {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  school        School         @relation(fields: [schoolId], references: [id])
+  arms          ClassArm[]
+  students      Student[]
+  schemesOfWork SchemeOfWork[]
+
+  @@unique([schoolId, name])
+  @@map("classes")
+  @@schema("public")
+}
+
+model ClassArm {
+  id             String   @id @default(uuid())
+  classId        String
+  name           String
+  classTeacherId String?
+  createdAt      DateTime @default(now())
+
+  class           Class              @relation(fields: [classId], references: [id])
+  classTeacher    User?              @relation("ClassTeacher", fields: [classTeacherId], references: [id])
+  students        Student[]
+  attendance      AttendanceRecord[]
+  subjectTeachers SubjectTeacher[]
+  timetableSlots  TimetableSlot[]
+  exams           Exam[]
+
+  @@unique([classId, name])
+  @@map("class_arms")
+  @@schema("public")
+}
+
+model AttendanceRecord {
+  id         String           @id @default(uuid())
+  studentId  String
+  classArmId String
+  date       DateTime         @default(now())
+  status     AttendanceStatus
+  markedById String
+  createdAt  DateTime         @default(now())
+
+  student  Student  @relation(fields: [studentId], references: [id])
+  arm      ClassArm @relation(fields: [classArmId], references: [id])
+  markedBy User     @relation(fields: [markedById], references: [id])
+
+  @@unique([studentId, classArmId, date])
+  @@map("attendance_records")
+  @@schema("public")
+}
+
+model Notice {
+  id            String       @id @default(uuid())
+  schoolId      String
+  title         String
+  body          String
+  attachmentUrl String?
+  targetType    NoticeTarget @default(ALL)
+  targetId      String?
+  publishedAt   DateTime?
+  createdAt     DateTime     @default(now())
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@map("notices")
+  @@schema("public")
+}
+
+model Subject {
+  id              String           @id @default(uuid())
+  schoolId        String
+  name            String
+  shortCode       String
+  createdAt       DateTime         @default(now())
+  subjectTeachers SubjectTeacher[]
+  timetableSlots  TimetableSlot[]
+  exams           Exam[]
+  schemesOfWork   SchemeOfWork[]
+
+  @@unique([schoolId, name])
+  @@map("subjects")
+  @@schema("public")
+}
+
+model SchoolInvite {
+  id        String    @id @default(uuid())
+  schoolId  String
+  code      String    @unique
+  role      Role
+  fullName  String?
+  email     String?
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  usedBy    String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@index([code])
+  @@index([schoolId])
+  @@map("school_invites")
+  @@schema("public")
+}
+
+model TermResult {
+  id         String   @id @default(uuid())
+  studentId  String
+  classArmId String
+  session    String
+  term       Int // 1, 2, or 3
+  subjectId  String
+  caScore    Float?
+  examScore  Float?
+  totalScore Float?
+  grade      String?
+  remark     String?
+  locked     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([studentId, classArmId, session, term, subjectId])
+  @@map("term_results")
+  @@schema("public")
+}
+
+model Payment {
+  id        String    @id @default(uuid())
+  schoolId  String
+  studentId String
+  feeItemId String?
+  amount    Float
+  reference String    @unique
+  status    String    @default("pending")
+  channel   String?
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  session   String?
+
+  school  School  @relation(fields: [schoolId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@map("payments")
+  @@schema("public")
+}
+
+model FeeRecord {
+  id            String        @id @default(uuid())
+  schoolId      String
+  studentId     String
+  term          Int
+  session       String
+  amount        Float
+  description   String // "Tuition - Term 1", "PTA Levy", "Uniform"
+  status        PaymentStatus @default(PENDING)
+  paymentMethod String? // "cash", "transfer", "pos", "card", "online"
+  paidAt        DateTime?
+  recordedById  String // bursar/admin who marked it
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  school     School  @relation(fields: [schoolId], references: [id])
+  student    Student @relation("FeeStudent", fields: [studentId], references: [id])
+  recordedBy User    @relation("FeeRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([schoolId, session, term])
+  @@index([studentId])
+  @@map("fee_records")
+  @@schema("public")
+}
+
+model SalaryRecord {
+  id           String        @id @default(uuid())
+  schoolId     String
+  staffId      String
+  month        Int // 1-12
+  year         Int
+  amount       Float
+  status       PaymentStatus @default(PENDING)
+  paidAt       DateTime?
+  recordedById String
+  notes        String? // "Advance", "Deduction: loan"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  school     School @relation(fields: [schoolId], references: [id])
+  staff      User   @relation("SalaryStaff", fields: [staffId], references: [id])
+  recordedBy User   @relation("SalaryRecordedBy", fields: [recordedById], references: [id])
+
+  @@unique([staffId, month, year])
+  @@index([schoolId, year, month])
+  @@map("salary_records")
+  @@schema("public")
+}
+
+model OnboardingProgress {
+  id          String   @id @default(uuid())
+  schoolId    String   @unique
+  currentStep Int      @default(1)
+  completed   Boolean  @default(false)
+  step1Data   Json?
+  step2Data   Json?
+  step3Data   Json?
+  step4Data   Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@map("onboarding_progress")
+  @@schema("public")
+}
+
+model AcademicCalendar {
+  id             String    @id @default(uuid())
+  schoolId       String
+  academicYear   String
+  term           Int
+  termName       String
+  startDate      DateTime
+  endDate        DateTime
+  resumptionDate DateTime?
+  isCurrent      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, academicYear, term])
+  @@map("academic_calendars")
+  @@schema("public")
+}
+
+// Ã°Å¸â€ â€¢ Timetable Models
+
+model SubjectTeacher {
+  id         String   @id @default(uuid())
+  schoolId   String
+  subjectId  String
+  classArmId String
+  teacherId  String
+  createdAt  DateTime @default(now())
+
+  school  School   @relation(fields: [schoolId], references: [id])
+  subject Subject  @relation(fields: [subjectId], references: [id])
+  arm     ClassArm @relation(fields: [classArmId], references: [id])
+  teacher User     @relation(fields: [teacherId], references: [id])
+
+  @@unique([subjectId, classArmId])
+  @@index([schoolId])
+  @@index([classArmId])
+  @@index([teacherId])
+  @@map("subject_teachers")
+  @@schema("public")
+}
+
+model TimetableSlot {
+  id         String   @id @default(uuid())
+  schoolId   String
+  classArmId String
+  subjectId  String
+  teacherId  String
+  dayOfWeek  Int // 0=Monday, 1=Tuesday ... 4=Friday
+  period     Int // 1-based period number (1=08:00, 2=09:00 ...)
+  startTime  String // "08:00"
+  endTime    String // "08:45"
+  room       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school  School   @relation(fields: [schoolId], references: [id])
+  arm     ClassArm @relation(fields: [classArmId], references: [id])
+  subject Subject  @relation(fields: [subjectId], references: [id])
+  teacher User     @relation(fields: [teacherId], references: [id])
+
+  @@unique([classArmId, dayOfWeek, period])
+  @@index([schoolId])
+  @@index([teacherId])
+  @@map("timetable_slots")
+  @@schema("public")
+}
+
+// Ã°Å¸â€ â€¢ CBT / Exam Models
+
+model Exam {
+  id           String   @id @default(uuid())
+  schoolId     String
+  title        String
+  instructions String?
+  duration     Int // minutes
+  classArmId   String
+  subjectId    String
+  session      String
+  term         Int
+  totalMarks   Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school  School   @relation(fields: [schoolId], references: [id])
+  arm     ClassArm @relation(fields: [classArmId], references: [id])
+  subject Subject  @relation(fields: [subjectId], references: [id])
+
+  questions ExamQuestion[]
+  attempts  ExamAttempt[]
+
+  @@index([schoolId])
+  @@index([classArmId])
+  @@map("exams")
+  @@schema("public")
+}
+
+model ExamQuestion {
+  id            String @id @default(uuid())
+  examId        String
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String // "A", "B", "C", or "D"
+  marks         Int    @default(1)
+
+  exam Exam @relation(fields: [examId], references: [id])
+
+  @@index([examId])
+  @@map("exam_questions")
+  @@schema("public")
+}
+
+model ExamAttempt {
+  id          String    @id @default(uuid())
+  examId      String
+  studentId   String
+  score       Int       @default(0)
+  total       Int       @default(0)
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  answers     Json? // { "questionId": "A", ... }
+
+  exam    Exam    @relation(fields: [examId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@map("exam_attempts")
+  @@schema("public")
+}
+
+// Ã°Å¸â€œÅ¡ CBT Past Questions Models (WAEC, NECO, JAMB)
+
+model CBTSubject {
+  id          String   @id @default(uuid())
+  schoolId    String
+  name        String // "Mathematics", "English Language", "Physics", etc.
+  code        String // "MAT", "ENG", "PHY"
+  examTypes   String[] // ["WAEC", "NECO", "JAMB"]
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school      School        @relation("CBTSubjectSchool", fields: [schoolId], references: [id])
+  topics      CBTTopic[]    @relation("CBTTopicSubject")
+  questions   CBTQuestion[] @relation("CBTQuestionSubject")
+  attempts    CBTAttempt[]  @relation("CBTAttemptSubject")
+  cbtsessions CBTSession[]  @relation("CBTSessionSubject")
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("cbt_subjects")
+  @@schema("public")
+}
+
+model CBTTopic {
+  id          String   @id @default(uuid())
+  schoolId    String
+  subjectId   String
+  name        String // "Algebra", "Comprehension", "Mechanics"
+  description String?
+  yearRange   String? // "2010-2024"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school    School        @relation("CBTTopicSchool", fields: [schoolId], references: [id])
+  subject   CBTSubject    @relation("CBTTopicSubject", fields: [subjectId], references: [id])
+  questions CBTQuestion[] @relation("CBTQuestionTopic")
+  attempts  CBTAttempt[]  @relation("CBTAttemptTopic")
+
+  @@unique([subjectId, name])
+  @@index([schoolId])
+  @@index([subjectId])
+  @@map("cbt_topics")
+  @@schema("public")
+}
+
+model CBTQuestion {
+  id             String   @id @default(uuid())
+  schoolId       String
+  subjectId      String
+  topicId        String?
+  examType       String // "WAEC", "NECO", "JAMB"
+  year           Int // 2024, 2023, etc.
+  questionNumber Int // Question number in that year's paper
+  questionText   String
+  optionA        String
+  optionB        String
+  optionC        String
+  optionD        String
+  correctAnswer  String // "A", "B", "C", "D"
+  explanation    String? // Detailed explanation
+  difficulty     String   @default("MEDIUM") // "EASY", "MEDIUM", "HARD"
+  marks          Int      @default(1)
+  tags           String[] // ["algebra", "quadratic-equations"]
+  source         String? // "WAEC 2024 Paper 1"
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school   School       @relation("CBTQuestionSchool", fields: [schoolId], references: [id])
+  subject  CBTSubject   @relation("CBTQuestionSubject", fields: [subjectId], references: [id])
+  topic    CBTTopic?    @relation("CBTQuestionTopic", fields: [topicId], references: [id])
+  attempts CBTAttempt[] @relation("CBTAttemptQuestion")
+  sessions CBTSession[] @relation("CBTSessionQuestion")
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([topicId])
+  @@index([examType, year])
+  @@map("cbt_questions")
+  @@schema("public")
+}
+
+model CBTAttempt {
+  id           String    @id @default(uuid())
+  schoolId     String
+  studentId    String
+  subjectId    String
+  topicId      String?
+  examType     String // "WAEC", "NECO", "JAMB"
+  year         Int?
+  mode         String    @default("PRACTICE") // "PRACTICE", "MOCK", "TIMED"
+  score        Int       @default(0)
+  total        Int       @default(0)
+  correctCount Int       @default(0)
+  wrongCount   Int       @default(0)
+  skippedCount Int       @default(0)
+  timeSpent    Int       @default(0) // seconds
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  answers      Json // { "questionId": "A", ... }
+  questionIds  String[] // Array of question IDs attempted
+  questionId   String? // Current question being attempted
+
+  school   School       @relation("CBTAttemptSchool", fields: [schoolId], references: [id])
+  student  Student      @relation("CBTAttemptStudent", fields: [studentId], references: [id])
+  subject  CBTSubject   @relation("CBTAttemptSubject", fields: [subjectId], references: [id])
+  topic    CBTTopic?    @relation("CBTAttemptTopic", fields: [topicId], references: [id])
+  question CBTQuestion? @relation("CBTAttemptQuestion", fields: [questionId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([examType])
+  @@map("cbt_attempts")
+  @@schema("public")
+}
+
+model CBTSession {
+  id                   String       @id @default(uuid())
+  schoolId             String
+  studentId            String
+  subjectId            String
+  examType             String // "WAEC", "NECO", "JAMB"
+  mode                 String // "PRACTICE", "MOCK", "TIMED"
+  questionCount        Int
+  timeLimit            Int? // seconds, null for untimed
+  status               String       @default("IN_PROGRESS") // "IN_PROGRESS", "COMPLETED", "ABANDONED"
+  startedAt            DateTime     @default(now())
+  completedAt          DateTime?
+  currentQuestionIndex Int          @default(0)
+  answers              Json // { "questionId": "A", ... }
+  questionIds          String[] // Ordered array of question IDs
+  cbtquestion          CBTQuestion? @relation("CBTSessionQuestion", fields: [cBTQuestionId], references: [id])
+  cBTQuestionId        String?
+
+  school  School     @relation("CBTSessionSchool", fields: [schoolId], references: [id])
+  student Student    @relation("CBTSessionStudent", fields: [studentId], references: [id])
+  subject CBTSubject @relation("CBTSessionSubject", fields: [subjectId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId, status])
+  @@map("cbt_sessions")
+  @@schema("public")
+}
+
+// Ã°Å¸Â¤â€“ AI Lesson Generator Models
+
+model SchemeOfWork {
+  id               String   @id @default(uuid())
+  schoolId         String
+  subjectId        String
+  classId          String
+  title            String
+  session          String
+  term             Int
+  weeks            Json // [{ week: 1, topic: "...", isCompleted: false, completedAt: null }, ...]
+  periodsPerWeek   Int      @default(2)
+  minutesPerPeriod Int      @default(40)
+  midtermQuestions Json? // [{ question, options: [], answer }, ...]
+  examQuestions    Json? // [{ question, options: [], answer }, ...]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+
+  lessonNotes LessonNote[]
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([classId])
+  @@map("schemes_of_work")
+  @@schema("public")
+}
+
+model LessonNote {
+  id          String   @id @default(uuid())
+  schemeId    String
+  weekNumber  Int
+  topic       String
+  content     String // Markdown content from AI
+  exercises   Json? // [{ question: "...", answer: "..." }, ...]
+  assignments Json? // [{ question: "...", }, ...]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scheme SchemeOfWork @relation(fields: [schemeId], references: [id])
+
+  @@unique([schemeId, weekNumber])
+  @@index([schemeId])
+  @@map("lesson_notes")
+  @@schema("public")
+}
+
+enum ComplianceReportType {
+  STUDENT_NOMINAL_ROLL
+  STAFF_NOMINAL_ROLL
+  ATTENDANCE_SUMMARY
+  FEE_COLLECTION_REPORT
+  EXAM_REGISTRATION_SUMMARY
+  INFRASTRUCTURE_CHECKLIST
+  @@schema("public")
+}
+
+// Ã°Å¸â€¢Â Teacher Timesheet Models
+
+model TeacherTimesheet {
+  id               String          @id @default(uuid())
+  schoolId         String
+  teacherId        String
+  weekStart        DateTime // Monday of the week
+  periodsTaught    Int             @default(0)
+  periodsScheduled Int             @default(0)
+  status           TimesheetStatus @default(DRAFT)
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  approvedById     String?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  school     School @relation(fields: [schoolId], references: [id])
+  teacher    User   @relation("TeacherTimesheets", fields: [teacherId], references: [id])
+  approvedBy User?  @relation("ApprovedTimesheets", fields: [approvedById], references: [id])
+
+  @@unique([teacherId, weekStart])
+  @@index([schoolId, weekStart])
+  @@map("teacher_timesheets")
+  @@schema("public")
+}
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  @@schema("public")
+}
+
+// Ã°Å¸â€œÂ§ Email Communication Models
+
+model SchoolEmailConfig {
+  id         String         @id @default(uuid())
+  schoolId   String         @unique
+  host       String
+  port       Int
+  username   String
+  password   String // Encrypted
+  fromEmail  String
+  fromName   String
+  encryption EncryptionType @default(STARTTLS)
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@map("school_email_configs")
+  @@schema("public")
+}
+
+enum EncryptionType {
+  NONE
+  SSL
+  STARTTLS
+  @@schema("public")
+}
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String // "welcome", "fee_reminder", "attendance_alert", etc.
+  subject   String
+  body      String // HTML with {{placeholders}}
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School     @relation(fields: [schoolId], references: [id])
+  emails EmailLog[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("email_templates")
+  @@schema("public")
+}
+
+model EmailLog {
+  id         String      @id @default(uuid())
+  schoolId   String
+  templateId String?
+  to         String
+  subject    String
+  html       String
+  status     EmailStatus @default(PENDING)
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime    @default(now())
+
+  school   School         @relation(fields: [schoolId], references: [id])
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([schoolId])
+  @@index([schoolId, status])
+  @@index([schoolId, createdAt])
+  @@map("email_logs")
+  @@schema("public")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
+  @@schema("public")
+}
+
+// Ã°Å¸â€œâ€¹ Compliance Report Models
+
+model ComplianceReport {
+  id            String               @id @default(uuid())
+  schoolId      String
+  reportType    ComplianceReportType
+  title         String
+  description   String?
+  data          Json
+  generatedById String
+  createdAt     DateTime             @default(now())
+
+  school      School @relation(fields: [schoolId], references: [id])
+  generatedBy User   @relation(fields: [generatedById], references: [id])
+
+  @@index([schoolId, reportType])
+  @@index([schoolId, createdAt])
+  @@map("compliance_reports")
+  @@schema("public")
+}
+
+// Ã°Å¸ÂÂ¢ Platform/Subscription Models
+
+model SubscriptionPlan {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  price       Float
+  interval    String // "monthly", "yearly"
+  features    Json
+  maxStudents Int?
+  maxStaff    Int?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schools School[]
+
+  @@map("subscription_plans")
+  @@schema("public")
+}
+
+model PlatformConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+  schools     School[]
+
+  @@map("platform_configs")
+  @@schema("public")
+}
+
+model PaymentTransaction {
+  id         String   @id @default(uuid())
+  schoolId   String
+  amount     Float
+  currency   String   @default("NGN")
+  status     String // "pending", "success", "failed", "refunded"
+  reference  String   @unique
+  gateway    String // "paystack", "flutterwave", "manual"
+  gatewayRef String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([reference])
+  @@index([status])
+  @@map("payment_transactions")
+  @@schema("public")
+}
+
+model PastQuestionCache {
+  id        String   @id @default(uuid())
+  schoolId  String
+  cacheKey  String
+  questions Json
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([schoolId, cacheKey])
+  @@map("past_question_cache")
+  @@schema("public")
+}
+
+model RefreshToken {
+  id            String   @id @default(uuid())
+  userId        String
+  tokenHash     String   @unique
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  revokedAt     DateTime?
+  userAgent     String?
+  ipAddress     String?
+  deviceId      String?
+  lastActiveAt  DateTime @default(now())
+  isCurrent     Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceId])
+  @@map("refresh_tokens")
+  @@schema("public")
+}
+
+// ─── Audit Trail ───
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  schoolId    String?
+  action      String   // e.g. "student.create", "payment.record", "POST /students"
+  resource    String   // e.g. "student", "payment", "auth"
+  resourceId  String?
+  method      String?  // GET, POST, PUT, DELETE, PATCH
+  path        String?
+  ipAddress   String?
+  userAgent   String?
+  oldValues   Json?    // Previous state before change (for updates/deletes)
+  newValues   Json?    // New state after change (for creates/updates)
+  result      String   @default("success") // "success" | "failure"
+  errorMessage String?
+  metadata    Json?    // Additional context (duration, requestId, etc.)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([schoolId, createdAt])
+  @@map("audit_logs")
+  @@schema("public")
+}

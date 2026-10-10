@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Shield -->
+  <path d="M32 4L56 14V32C56 46 44 56 32 60C20 56 8 46 8 32V14L32 4Z" fill="#0B6E4F"/>
+  <path d="M32 10L50 18V32C50 42 41 50 32 54C23 50 14 42 14 32V18L32 10Z" fill="#1B2A4A"/>
+  <!-- Compass -->
+  <circle cx="32" cy="32" r="10" fill="none" stroke="#F59E0B" stroke-width="2"/>
+  <circle cx="32" cy="32" r="3" fill="#F59E0B"/>
+  <line x1="32" y1="18" x2="32" y2="24" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="32" y1="40" x2="32" y2="46" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+  <line x1="18" y1="32" x2="24" y2="32" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+  <line x1="40" y1="32" x2="46" y2="32" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+  <text x="32" y="20" text-anchor="middle" fill="#F59E0B" font-size="6" font-weight="700" font-family="Inter, sans-serif">N</text>
+</svg>

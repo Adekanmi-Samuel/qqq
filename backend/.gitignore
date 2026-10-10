@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.next/
+.env
+.env.local
+.env.vercel
+*.log
+.DS_Store
+
+.vercel
+# Contains hardcoded env helpers — may hold real keys, keep out of git
+add-envs.ps1
+
+.vercel
+.env*

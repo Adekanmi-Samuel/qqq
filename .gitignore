@@ -1,0 +1,109 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Prisma
+backend/prisma/migrations/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Runtime
+pids/
+*.pid
+*.seed
+
+# Misc
+*.tgz
+.eslintcache
+
+# Debug / diagnostic scripts (not part of the app)
+diag*.mjs
+dev-*.mjs
+capture-*.js
+shot*.mjs
+verify*.mjs
+static-server.mjs
+query_users.js
+webpack-fmtest.mjs
+e2e-test.ts
+config.yml
+
+# Screenshots
+*.png
+
+# Temp docs
+FINAL_SUMMARY.txt
+SCREENSHOT_QUICKSTART.txt
+SCHOOLHUB_AUDIT_REPORT.md
+implementation_plan.md
+task.md
+educore.html
+
+# LinkedIn drafts
+linkedin-posts/
+
+# Binaries / tools (not part of the repo)
+*.exe
+*.zip
+
+# Local Netlify folder
+.netlify
+
+# Session / audit junk (never ship)
+audit_extract.txt
+dep.c
+sec.c
+live-audit/
+work-login.cookies
+schoolhub-api.vercel.app.c2
+schoolhub-api.vercel.app.c3
+schoolhub-api.vercel.app.cookies
+schoolpilot-work-api.vercel.app.c2
+schoolpilot-work-api.vercel.app.c3
+schoolpilot-work-api.vercel.app.cookies
+frontend/.vercel/
+backend/.vercel/
+
+# Local secret dumps
+sb-access-token*
+sb-anon.txt
+sb-keys.json
+sb-service-role.txt

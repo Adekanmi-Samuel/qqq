@@ -1,0 +1,35 @@
+# SchoolPilot
+
+SchoolPilot is Nigeria's leading AI-powered school management platform built for primary, secondary, and tertiary institutions across Nigeria.
+
+## What It Does
+
+- Student enrollment and profile management
+- Attendance tracking with real-time parent notifications
+- Automated report card generation and result publication
+- School fees collection and financial reconciliation
+- CBT (Computer Based Test) exam creation and grading
+- Parent-school communication portal
+- Staff payroll and HR management
+- Library and inventory management
+
+## Who It Is For
+
+School administrators, teachers, parents, and students in Nigerian schools looking for a single platform to manage all school operations.
+
+## Key Pages
+
+- Home: https://schoolpilot-work.vercel.app
+- About: https://schoolpilot-work.vercel.app/about
+- Pricing: https://schoolpilot-work.vercel.app/pricing
+- Contact: https://schoolpilot-work.vercel.app/contact
+- Privacy Policy: https://schoolpilot-work.vercel.app/privacy
+- Terms of Service: https://schoolpilot-work.vercel.app/terms
+- Forgot Password: https://schoolpilot-work.vercel.app/forgot-password
+- Student Signup: https://schoolpilot-work.vercel.app/student-signup
+- Staff Signup: https://schoolpilot-work.vercel.app/staff-signup
+- Verify Email: https://schoolpilot-work.vercel.app/verify-email
+
+## Contact
+
+Visit https://schoolpilot-work.vercel.app/contact for inquiries or support.

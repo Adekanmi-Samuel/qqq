@@ -1,0 +1,23 @@
+{
+  "name": "SchoolPilot - AI School Management",
+  "short_name": "SchoolPilot",
+  "description": "Nigeria's smartest AI-powered school management platform. CBT, attendance, results, fees & more.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f4f3ee",
+  "theme_color": "#0B6E4F",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
